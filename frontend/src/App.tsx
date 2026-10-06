@@ -1,11 +1,12 @@
 
 import './App.css'
+import AdList from './pages/AdsList/AdsList'
 
 function App() {
 
   return (
     <>
-      главный компонент
+      <AdList/>
     </>
   )
 }

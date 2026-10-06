@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+
+#root{
+    max-width: 87rem;
+    max-height: 52rem;
+    font-family: 'Roboto', sans-serif;
+}
