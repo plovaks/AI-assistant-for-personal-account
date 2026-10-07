@@ -2,7 +2,20 @@
 
 
 #root{
-    max-width: 87rem;
-    max-height: 52rem;
+    height: 100vh;
     font-family: 'Roboto', sans-serif;
+    
+    
+}
+
+body{
+    background-color: #F7F5F8;
+    padding: 1rem 2rem;
+    box-sizing: border-box;
+    
+}
+
+h1, h2, h3, h4, h5, h6, p{
+    margin: 0;
+    padding: 0;
 }
