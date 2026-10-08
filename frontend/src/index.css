@@ -2,16 +2,15 @@
 
 
 #root{
-    height: 100vh;
+    /* height: 100vh; */
     font-family: 'Roboto', sans-serif;
-    
-    
 }
 
 body{
     background-color: #F7F5F8;
     padding: 1rem 2rem;
     box-sizing: border-box;
+    /* height:max-content; */
     
 }
 
