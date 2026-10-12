@@ -3,37 +3,11 @@ import {Link} from "react-router-dom"
 import './AdsList.css'
 import AdItem from '../../components/AdItem/AdItem'
 import {Switch} from 'antd';
+import type {Item, ItemsGetOut, Filters, Sort} from "../../types"
 
-// тип объявления
-export type AdItem = {
-    id: string | number,
-    category:"auto" | "real_estate" | "electronics",
-    title:string,
-    price:number,
-    needsRevision:boolean,
-}
-
-// тип получаемого списка объявлений
-export type ItemsGetOut = {
-    items: AdItem[],
-    total:number
-}
-
-// тип для фильтрации
-type Filters = {
-    category: string[],
-    needsRevision:boolean
-}
-
-// тип для сортировки
-
-type Sort = {
-    column: 'title' | 'createdAt' | '',
-    direction: 'asc' | 'desc' | ''
-}
 
 function AdList(){
-    const [items, setItems] = useState<AdItem[]>([]);
+    const [items, setItems] = useState<Item[]>([]);
     const [totalItems, setTotalItems] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
