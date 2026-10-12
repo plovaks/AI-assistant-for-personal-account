@@ -1,19 +1,20 @@
 import {useState, useEffect, type ChangeEvent } from 'react'
+import {Link} from "react-router-dom"
 import './AdsList.css'
 import AdItem from '../../components/AdItem/AdItem'
 import {Switch} from 'antd';
 
 // тип объявления
-type AdItem = {
+export type AdItem = {
     id: string | number,
     category:"auto" | "real_estate" | "electronics",
     title:string,
     price:number,
-    needsRevesion:boolean
+    needsRevision:boolean,
 }
 
 // тип получаемого списка объявлений
-type ItemsGetOut = {
+export type ItemsGetOut = {
     items: AdItem[],
     total:number
 }
@@ -22,6 +23,13 @@ type ItemsGetOut = {
 type Filters = {
     category: string[],
     needsRevision:boolean
+}
+
+// тип для сортировки
+
+type Sort = {
+    column: 'title' | 'createdAt' | '',
+    direction: 'asc' | 'desc' | ''
 }
 
 function AdList(){
@@ -38,6 +46,9 @@ function AdList(){
     // состояние для пагинации
     const [currentPage, setCurrentPage] = useState<number>(1);
 
+    // состояние для сортировки
+    const [sort, setSort] = useState<Sort>({column:'', direction:''})
+
     const itemsPerPage: number = 10;
     const itemsCategories = ["auto", "real_estate", "electronics"];
 
@@ -50,6 +61,14 @@ function AdList(){
     const skip = (currentPage - 1) * itemsPerPage;
     const totalPages = Math.ceil(totalItems/itemsPerPage);
     
+    // ф-я изменения сортировки
+    const handleSortChange = (sortType:string) => {
+        const sortColumn = sortType.split('-')[0];
+        const sortDirection = sortType.split('-')[1];
+        setSort({column: sortColumn as 'title' | 'createdAt' | '', direction:sortDirection as 'asc' | 'desc'});
+        setCurrentPage(1);
+    }
+
     // ф-я получения товаров с сервера
     const getItems = async() => {
         setIsLoading(true);
@@ -72,6 +91,11 @@ function AdList(){
                 queryParams.append('needsRevision', 'true')
             }
 
+            if(sort.column && sort.direction){
+                queryParams.append('sortColumn', sort.column)
+                queryParams.append('sortDirection', sort.direction)
+            }
+
             const response = await fetch(`/items?${queryParams.toString()}`);
 
             if (!response.ok){
@@ -81,6 +105,7 @@ function AdList(){
             const data: ItemsGetOut = await response.json();
 
             setItems(data.items);
+            // sconsole.log(data.items)
             setTotalItems(data.total);
 
         } catch (error: any) {
@@ -94,7 +119,7 @@ function AdList(){
     // обновление получения товаров при фильтрации
     useEffect(()=>{
         getItems();
-    }, [filters.category, filters.needsRevision, searchQuery, currentPage])
+    }, [filters.category, filters.needsRevision, searchQuery, currentPage, sort])
 
     // ф-я обновления категорий
     const handleCategoryChange = (category: string) => {
@@ -163,7 +188,20 @@ function AdList(){
 
                     </div>
                     <div className="select-filter">
+                        <select 
+                            name="select-sort" 
+                            id="sort"
+                            onChange={(e) => handleSortChange(e.target.value)}
+                            value={sort.column ? `${sort.column}-${sort.direction}` : ""}
+                        >
+                             <option value="">Сортировка по умолчанию</option>
+                            <option value="title-asc">{ `По названию (А -> Я)`}</option>
+                            <option value="title-desc">{ `По названию (Я -> А)`}</option>
 
+                            <option value="createdAt-desc">{ `По новизне (сначала новые)`}</option>
+                            <option value="createdAt-asc">{ `По новизне (сначала старые)`}</option>
+
+                        </select>
                     </div>
                 </div>
                 <div className="ads-list__feed">
@@ -209,12 +247,13 @@ function AdList(){
                     <div className="ads-feed-container">
                         <div className='ads-items'>
                             {items.map(item => (
-                                <AdItem
-                                    key={item.id}
-                                    category={categoryNames[item.category]}
-                                    name={item.title}
-                                    price={item.price}
-                                />
+                                <Link to={`/ad/${item.id}`} key={item.id}>
+                                    <AdItem
+                                        category={categoryNames[item.category]}
+                                        name={item.title}
+                                        price={item.price}
+                                    />
+                                </Link> 
                         ))}
                         </div>
                         {totalPages > 1 && (
