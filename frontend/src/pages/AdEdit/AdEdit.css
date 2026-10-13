@@ -1,0 +1,41 @@
+.edit-container{
+    padding: 2rem;
+}
+
+h1{
+    font-weight: 500;
+    color:rgba(0, 0, 0, 0.85);
+    font-size: 2rem;
+}
+
+.edit{
+    display: flex;
+    flex-direction: column;
+    gap:0.5rem;
+    width: 28rem;
+}
+
+label{
+    color: rgba(0, 0, 0, 0.85);
+    font-weight: 500;
+    font-size: 1.2rem;
+}
+
+.divider-line{
+    background-color:rgba(240, 240, 240, 1);
+    height: 1px;
+}
+
+/* input{
+    width: 28rem;
+    border-radius: 0.5rem;
+    border: 1px rgba(217, 217, 217, 1) solid;
+    line-height: 22px;
+    padding: 0.4rem 0.75rem;
+} */
+
+.edit-form{
+    display: flex;
+    flex-direction: column;
+    gap: 1.1em;
+}

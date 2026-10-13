@@ -226,6 +226,7 @@ function AdList(){
                                         category={categoryNames[item.category]}
                                         name={item.title}
                                         price={item.price}
+                                        needsRevision={item.needsRevision}
                                     />
                                 </Link> 
                         ))}

@@ -32,10 +32,29 @@
     padding-inline: 1rem;
     padding-top: 1.3rem;
     padding-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap:0.2rem;
+    flex-grow: 1; 
 }
 
 .item-price{
     color:#00000073;
     font-weight: 600;
 
+}
+
+.status-badge-container{
+    background-color: rgba(249, 241, 230, 1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    width: fit-content;
+    margin-top: auto; 
+}
+
+.status-badge-container .ant-badge .ant-badge-status-text{
+    font-family: inherit;
+    font-size: 0.9rem;
+    color:rgba(250, 173, 20, 1);
+    font-weight: 400;
 }

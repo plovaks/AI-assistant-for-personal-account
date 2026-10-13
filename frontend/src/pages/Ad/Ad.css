@@ -69,3 +69,11 @@
     font-weight: 500;
 }
 
+.param{
+    display: flex;
+    gap:1rem;
+}
+
+.ad-description{
+    width: 30rem;
+}

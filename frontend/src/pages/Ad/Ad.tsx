@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import type { Item, AutoItemParams, RealEstateItemParams, ElectronicsItemParams } from "../../types";
 import img from "../../assets/placeholder-image.png"
@@ -120,7 +120,10 @@ function Ad(){
                 return (
                     <ul className="params-list">
                         {Object.entries(autoLabels).map(([key, label]) => (
-                            <li key={key} ><span className="characteristic-label">{label}:</span> {renderValue(autoParams[key as keyof AutoItemParams])}</li>
+                            <li key={key} className="param">
+                                <span className="characteristic-label">{label}:</span> 
+                                {renderValue(autoParams[key as keyof AutoItemParams])}
+                            </li>
                         ))}
                     </ul>
                 )
@@ -130,7 +133,10 @@ function Ad(){
                 return (
                     <ul className="params-list">
                         {Object.entries(electronicsLabels).map(([key, label]) => (
-                            <li key={key}><b>{label}</b>{renderValue(electronicsParams[key as keyof ElectronicsItemParams])}</li>
+                            <li key={key} className="param">
+                                <span className="characteristic-label">{label}:</span> 
+                                {renderValue(electronicsParams[key as keyof ElectronicsItemParams])}
+                            </li>
                         ))}
                     </ul>
                 )
@@ -140,7 +146,10 @@ function Ad(){
                 return(
                     <ul className="params-list">
                         {Object.entries(realEstateLabels).map(([key,label]) => (
-                            <li key={key}><b>{label}:</b>{renderValue(estateParams[key as keyof RealEstateItemParams])}</li>
+                            <li key={key} className="param">
+                                <span className="characteristic-label">{label}:</span> 
+                                {renderValue(estateParams[key as keyof RealEstateItemParams])}
+                            </li>
                         ))}
                     </ul>
                 )
@@ -158,7 +167,14 @@ function Ad(){
                     <p>{ad?.price} ₽</p>
                 </div>
                 <div className="ad__header-extraInfo">
-                    <button className="edit-btn">Редактировать</button>
+                    <Link to={`/ads/${ad.id}/edit`}>
+                        <button 
+                            className="edit-btn"
+                        >
+                            Редактировать
+                        </button>
+                    </Link>
+                    
                     <div className="ad__header-extraInfo-time">
                         <p>Опубликовано: {creationDate}</p>
                         {updateDate && (
@@ -175,18 +191,13 @@ function Ad(){
                     <div className="ad__picture">
                         <img src={img} alt="placeholder-img" />
                     </div>
-                    {/* {ad.description && (
-                        <div>
-                            <h3>Описание</h3>
-                            <p>{ad.description}</p>
-                        </div>
-                    )} */}
+                    
                 </div>
                 <div className="ad__characteristics">
                     {ad.needsRevision && (
                         
                         <Alert
-                            message="Требуются доработки"
+                            title="Требуются доработки"
                             type="warning" 
                             showIcon       
                             className="ad-alert" 
@@ -200,9 +211,22 @@ function Ad(){
                             }
                         />
                     )}
-                    <h2 className="font-medium text-lg mb-[1rem]">Характеристики</h2>
-                    {renderCharacteristics()}
+                    {ad.params && Object.keys(ad.params).length > 0 && (
+                        <div>
+                            <h2 className="font-medium text-lg mb-[1rem]">Характеристики</h2>
+                            {renderCharacteristics()}
+                        </div>
+                    )}
+                    
                 </div>
+            </div>
+            <div className="ad-description">
+                <h2 className="font-medium text-lg mb-[1rem]">Описание</h2>
+                {ad.description ? (
+                    <p >{ad.description}</p>
+                ):(
+                    <p>Отсутствует</p>
+                )}
             </div>
             
            
