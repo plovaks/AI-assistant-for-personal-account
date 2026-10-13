@@ -1,16 +1,17 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import type { Item, AutoItemParams, RealEstateItemParams, ElectronicsItemParams } from "../../types";
+import type { AutoItemParams, RealEstateItemParams, ElectronicsItemParams, AdFeatures } from "../../types";
 import img from "../../assets/placeholder-image.png"
 import { Alert } from "antd";
 import './Ad.css'
 
-type AdFeatures = Item & {
-    createdAt:string,
-    updatedAt:string,
-    description?:string
-    params:AutoItemParams | RealEstateItemParams | ElectronicsItemParams
-}
+import {  
+    autoLabels, 
+    realEstateLabels, 
+    electronicsLabels, 
+    renderValue,
+    validateAdFields
+} from '../../types';
 
 // формат для корректного отбражения даты
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
@@ -19,45 +20,6 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
         hour:'2-digit',
         minute:'2-digit'
 })
-
-// перевод имен совйств на русский язык
-
-const autoLabels: Record<keyof AutoItemParams, string> = {
-    brand:'Марка',
-    model:'Модель',
-    yearOfManufacture: 'Год выпуска',
-    transmission: 'Коробка передач',
-    mileage: 'Пробег',
-    enginePower: 'Мощность двигателя'
-}
-
-const realEstateLabels: Record<keyof RealEstateItemParams, string> = {
-    type: "Тип недвижимости",
-    address: "Адрес",
-    area: "Площадь",
-    floor: "Этаж"
-}
-
-const electronicsLabels: Record<keyof ElectronicsItemParams, string> = {
-    type: "Тип устройства",
-    brand: "Марка",
-    model: "Модель",
-    condition: "Состояние",
-    color: "Цвет"
-}
-
-const valueTranslations: Record<string, string> = {
-    automatic: "Автомат",
-    manual: "Механика",
-    flat: "Квартира",
-    house: "Дом",
-    room: "Комната",
-    phone: "Телефон",
-    laptop: "Ноутбук",
-    misc: "Другое",
-    new: "Новое",
-    used: "Б/У"
-};
 
 function Ad(){
     const {id} = useParams<{id:string}>();
@@ -104,11 +66,7 @@ function Ad(){
     const creationDate = dateFormatter.format(new Date(ad.createdAt));
     const updateDate = dateFormatter.format(new Date(ad.updatedAt));
 
-    // ф-я перевода значений на русский
-    const renderValue = (val:string | number | undefined) => {
-        if (val === undefined || val === null) return "Не указано";
-        return valueTranslations[val.toString()] || val.toString();
-    }
+    
 
     // ф-я отображения характеристик в зависимости от категории
     const renderCharacteristics = () => {
@@ -158,6 +116,7 @@ function Ad(){
                 return <p>Неизвестная категория</p>;
         }
     }
+    const missingFields = validateAdFields(ad);
 
     return(
         <div className="ad">
@@ -205,7 +164,9 @@ function Ad(){
                                 <div>
                                     <p>У объявления не заполнены поля:</p>
                                     <ul>
-                                
+                                        {missingFields.map((field) => (
+                                            <li key={field}>{field}</li>
+                                        ))}
                                     </ul>
                                 </div>
                             }

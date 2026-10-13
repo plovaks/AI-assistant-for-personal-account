@@ -4,7 +4,7 @@ import './AdsList.css'
 import AdItem from '../../components/AdItem/AdItem'
 import {Switch} from 'antd';
 import type {Item, ItemsGetOut, Filters, Sort} from "../../types"
-
+import { categoryNames, itemsCategories } from '../../types';
 
 function AdList(){
     const [items, setItems] = useState<Item[]>([]);
@@ -24,14 +24,8 @@ function AdList(){
     const [sort, setSort] = useState<Sort>({column:'', direction:''})
 
     const itemsPerPage: number = 10;
-    const itemsCategories = ["auto", "real_estate", "electronics"];
-
-    // русификация категорий
-    const categoryNames: Record<string, string> = {
-        auto: "Транспорт",
-        real_estate: "Недвижимость",
-        electronics: "Электроника"
-    }
+    
+    
     const skip = (currentPage - 1) * itemsPerPage;
     const totalPages = Math.ceil(totalItems/itemsPerPage);
     
