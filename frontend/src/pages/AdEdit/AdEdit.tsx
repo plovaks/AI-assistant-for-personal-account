@@ -14,7 +14,7 @@ import {
 } from '../../types';
 
 
-type EditableAd = ItemUpdateIn & {id:string | number};
+type EditableAd = AdFeatures;
 
 const selectCategoryOptions = itemsCategories.map(element => ({
     value:element,
@@ -115,6 +115,7 @@ function AdEdit(){
                 <div className="edit edit-category">
                     <label htmlFor="">Категория</label>
                     <Select
+                        
                         id='category-select'
                         value={formParams ? formParams.category : adInfo.category}
                         options={selectCategoryOptions}
@@ -124,6 +125,7 @@ function AdEdit(){
                 <div className="edit edit-title">
                     <label htmlFor="">Название</label>
                     <Input 
+                        className={`${formParams?.title.trim() ? '': 'input-req-error'}`}
                         onChange={(e)=> fieldChange('title', e.target.value)}
                         required 
                         allowClear
@@ -131,13 +133,18 @@ function AdEdit(){
                     />
                 </div>
                 <div className="divider-line"></div>
-                <div className="edit edit-price">
-                    <label htmlFor="">Цена</label>
-                    <Input 
-                        required
-                        allowClear
-                        value={adInfo.price}
-                    />
+                <div className='input-price-actions'>
+                    <div className="edit edit-price">
+                        <label htmlFor="">Цена</label>
+                        <Input 
+                            className={`${formParams?.price ? '': 'input-req-error'}`}
+                            required
+                            allowClear
+                            value={adInfo.price}
+                        />
+                    <button className='ai-btn getprice'>Узнать рыночную цену</button>
+                </div>
+                    
                 </div>
                 <div className="divider-line"></div>
                 <label htmlFor="">Характеристики</label>
@@ -152,6 +159,7 @@ function AdEdit(){
                                         <div key={key} className="edit-param-field">
                                             <label className='edit-param-label'>{label}</label>
                                             <Input 
+                                                
                                                 defaultValue={renderValue(params[key as keyof AutoItemParams]) ?? ''} 
                                             />
                                         </div>
@@ -190,10 +198,11 @@ function AdEdit(){
                     <Input
                         onChange={(e) => fieldChange('description', e.target.value)}
                     />
+                    <button className='ai-btn improve-desc'>Улучшить описание</button>
                 </div>
                 <div className="form-actions">
-                    <button type='submit'>Сохранить</button>
-                    <button>Отменить</button>
+                    <button type='submit' className='submitForm'>Сохранить</button>
+                    <button className='cancelFormChanges'>Отменить</button>
                 </div>
             </form>
         </div>
