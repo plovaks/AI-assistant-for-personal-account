@@ -97,3 +97,8 @@ label{
 .input-empty{
     border: 1px rgba(255, 169, 64, 1) solid;
 }
+
+.popover{
+    width: 21rem;
+    padding: 0.5rem;
+}

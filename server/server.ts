@@ -5,8 +5,11 @@ import { Item } from 'src/types.ts';
 import { ItemsGetInQuerySchema, ItemUpdateInSchema } from 'src/validation.ts';
 import { treeifyError, ZodError } from 'zod';
 import { doesItemNeedRevision } from './src/utils.ts';
+import 'dotenv/config'; 
+
 
 const ITEMS = items as Item[];
+
 
 const fastify = Fastify({
   logger: true,
@@ -163,6 +166,104 @@ fastify.put<ItemUpdateRequest>('/items/:id', (request, reply) => {
     throw error;
   }
 });
+
+// эндпоинт для работы с AI ollama
+const OLLAMA_URL = 'https://ollama.com/api/chat';
+const OLLAMA_MODEL = 'gpt-oss:120b'; 
+
+fastify.post('/items/ai-recommend-price', async (request, reply) => {
+  const apiKey = process.env.OLLAMA_API_KEY;
+
+  if (!apiKey) {
+    return reply
+      .status(500)
+      .send({ success: false, error: 'OLLAMA_API_KEY не задан в .env сервера' });
+  }
+
+  const { category, title, description, params } = request.body as any;
+
+  const prompt = `
+  Категория: ${category}
+  Название: ${title}
+  Описание: ${description || 'Не указано'}
+  Характеристики: ${JSON.stringify(params)}
+  `.trim();
+
+  try {
+    const response = await fetch(OLLAMA_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        stream: false,
+        options: { temperature: 0.2 },
+        format: {
+          type: 'object',
+          properties: {
+            textAnalysis: { type: 'string' },
+            recommendedPrice: { type: 'number' },
+          },
+          required: ['textAnalysis', 'recommendedPrice'],
+        },
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Ты эксперт по оценке рыночной стоимости б/у и новых товаров в России. Отвечай строго на русском языке.\n\n' +
+              'В свойстве "textAnalysis" ты должен сформировать ТОЛЬКО структурированный список цен по трем состояниям товара, ' +
+              'не используя вводные слова, аналитику брендов и длинные выводы. Каждую строчку списка разделяй строго символом \\n.\n\n' +
+              'Шаблон для генерации текста в "textAnalysis":\n' +
+              'Средняя цена на [Название товара из запроса]:\n' +
+              '• [Цена от] – [Цена до] ₽ — отличное состояние.\n' +
+              '• От [Цена идеала] ₽ — идеал, идеальное состояние.\n' +
+              '• [Цена сниженная] – [Цена средняя] ₽ — срочно или с дефектами.\n\n' +
+              'В свойстве "recommendedPrice" укажи ТОЛЬКО ОДНО число — оптимальную рекомендуемую цену для отличного состояния.',
+          },
+          { role: 'user', content: prompt },
+        ]
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return reply
+        .status(response.status)
+        .send({ success: false, error: `Ошибка Ollama: ${errText}` });
+    }
+
+    const data = (await response.json()) as { message?: { content?: string } };
+    const raw = data.message?.content;
+
+    if (!raw) {
+      return reply.status(500).send({ success: false, error: 'ИИ вернул пустой ответ' });
+    }
+
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    const price = Math.round(Number(parsed.recommendedPrice));
+
+    if (!Number.isFinite(price)) {
+      request.log.warn({ raw }, 'ИИ вернул ответ без числовой цены');
+      return reply.status(502).send({
+        success: false,
+        error: 'ИИ вернул непонятный ответ, попробуйте ещё раз',
+      });
+    }
+
+    return {
+      textAnalysis: String(parsed.textAnalysis ?? ''),
+      recommendedPrice: price,
+    };
+  } catch (err: any) {
+    request.log.error(err);
+    return reply
+      .status(500)
+      .send({ success: false, error: err.message || 'Внутренняя ошибка сервера' });
+  }
+});
+
 
 const port = Number(process.env.PORT || process.env.port) || 8080;
 

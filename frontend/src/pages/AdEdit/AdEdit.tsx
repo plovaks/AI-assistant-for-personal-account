@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './AdEdit.css'
-import { Input, Select, message } from 'antd';
+import { Input, Select, message,Popover } from 'antd';
 import type { AdFeatures, ItemUpdateIn, AutoItemParams, RealEstateItemParams, ElectronicsItemParams, FormParams} from '../../types';
 import {  
     autoLabels, 
     realEstateLabels, 
     electronicsLabels, 
-    renderValue,
     itemsCategories,
     categoryNames,
     validateAdFields
@@ -25,22 +24,28 @@ const selectCategoryOptions = itemsCategories.map(element => ({
 function AdEdit(){
     const {id} = useParams<{id:string}>();
     const navigate = useNavigate();
+    const location = useLocation();
+    const fromPath = location.state?.from || `/ad/${id}`;
     const [adInfo, setAdInfo] = useState<EditableAd | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<boolean | null>(null);
     // состояние для парметров формы
     const [formParams,setFormParams] = useState<AdFeatures | null>(null)
     // состояния для ai статусов
-    const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [aiStatus, setAiStatus] = useState<'idle' | 'success' | 'loading' | 'error'>('idle');
     const [aiResponse, setAiResponse] = useState<string>('');
     const [aiParsedPrice, setAiParsedPrice] = useState<number | null>(null);
     const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [isAiRequestedBefore, setIsAiRequestedBefore] = useState<boolean>(false);
+
 
     const handleGetAiPrice = async () => {
-        if (!formParams) return;
-        setAiStatus('loading');
+        if (aiLoading || !formParams) return;
+        setAiLoading(true);
         setIsPopoverOpen(true);
-
+        setIsAiRequestedBefore(true);
+        setAiStatus('loading');
         try {
             const data = await fetchPriceRecommendation({
                 category: formParams.category,
@@ -48,15 +53,17 @@ function AdEdit(){
                 description: formParams.description,
                 params: formParams.params
             });
-
             setAiResponse(data.textAnalysis);
             setAiParsedPrice(data.recommendedPrice);
             setAiStatus('success');
         } catch (err) {
             console.error("ошибка при обращении к ИИ сервису:", err);
             setAiStatus('error');
+        } finally {
+            setAiLoading(false);
         }
     };
+
     // ф-я получения данных об объявлении
     useEffect(() => {
         const loadAdInfo = async() => {
@@ -170,7 +177,7 @@ function AdEdit(){
             message.success('Изменения сохранены')
 
             console.log('парметры обновлены, статус: ', res.status);
-            navigate(`/ad/${id}`)
+            navigate(fromPath, { replace: true });
             
         } catch (error) {
             console.error('не удалось сохранить изменения:', error);
@@ -257,11 +264,74 @@ function AdEdit(){
                             <p style={{color:'rgba(255, 77, 79, 1)', fontSize:'0.7rem'}}>Цена должна быть заполнена</p>
                         )}
                     </div>
-                    {formParams.price && (
-                        <button type="button" className='ai-btn getprice' onClick={handleGetAiPrice}> Узнать рыночную цену</button>
-                    )}
                     
+                    {formParams.price && (
+                        <Popover
+                            trigger={'click'}
+                            open={isPopoverOpen}
+                            onOpenChange={(open) => {
+                                setIsPopoverOpen(open);
+                            }}
+                            placement="top"
+                            align={{offset:[80, -10] }}
+                            content={
+                                <div style={{ maxWidth: '21rem' ,}}>
+                                    {aiStatus === 'loading' && <p>Анализ данных о товаре...</p>}
+                                    {aiStatus === 'error' && (
+                                        <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
+                                            <h4 style={{fontWeight:500, color:'rgba(192, 15, 12, 1)'}}>Произошла ошибка при запросе к AI</h4>
+                                            <p style={{ color: 'rgba(30, 30, 30, 1)' }}>
+                                                Попробуйте повторить запрос или закройте уведомление
+                                            </p>
+                                            <button type="button" onClick={() => setIsPopoverOpen(false)} style={{backgroundColor:'rgba(252, 179, 173, 1)', color:'rgba(0, 0, 0, 0.85)', fontWeight:400, paddingInline:'0.5rem',borderRadius:'0.25rem', width:'fit-content'}}>
+                                                Закрыть
+                                            </button>
+                                        </div>
+                                    )}
+                                    {aiStatus === 'success' && (
+                                        <div>
+                                            <h4>Ответ AI</h4>
+                                            <p><b>Рекомендуемая цена: {aiParsedPrice?.toLocaleString('ru-RU')} ₽</b></p>
+                                            <p style={{ whiteSpace: 'pre-line', margin: '10px 0' }}>{aiResponse}</p>
+                                            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                                                <button
+                                                    type="button"
+                                                    className="submitForm"
+                                                    style={{ padding: '4px 12px', height: 'auto' }}
+                                                    onClick={() => {
+                                                        if (aiParsedPrice !== null) fieldChange('price', String(aiParsedPrice));
+                                                        setIsPopoverOpen(false);
+                                                    }}
+                                                >
+                                                    Применить
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="cancelFormChanges"
+                                                    style={{ padding: '4px 12px', height: 'auto' }}
+                                                    onClick={() => setIsPopoverOpen(false)}
+                                                >
+                                                    Закрыть
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            }
+                           
+                        >
+                            <button type="button" onClick={handleGetAiPrice} disabled={aiLoading} className='ai-btn'>
+                                {aiLoading 
+                                    ? 'Выполняется запрос' 
+                                    : isAiRequestedBefore 
+                                        ? 'Повторить запрос' 
+                                        : 'Узнать рыночную цену'
+                                }
+                            </button>
+                        </Popover>
+                    )}
                 </div>
+                    
 
                 <div className="divider-line"></div>
                 <label htmlFor="">Характеристики</label>
@@ -345,7 +415,7 @@ function AdEdit(){
                     <button   
                         type='button' 
                         className='cancelFormChanges'
-                        onClick={() => navigate(`/ad/${id}`)}
+                        onClick={() => navigate(fromPath, {replace:true})}
                     >
                         Отменить
                     </button>

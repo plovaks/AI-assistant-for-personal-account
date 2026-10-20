@@ -126,7 +126,7 @@ function Ad(){
                     <p>{ad?.price} ₽</p>
                 </div>
                 <div className="ad__header-extraInfo">
-                    <Link to={`/ads/${ad.id}/edit`}>
+                    <Link to={`/ads/${ad.id}/edit`} state={{from: `/ad/${ad.id}`}}>
                         <button 
                             className="edit-btn"
                         >
