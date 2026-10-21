@@ -11,7 +11,7 @@ import {
     categoryNames,
     validateAdFields
 } from '../../types';
-import { fetchPriceRecommendation } from '../../aiResponses';
+import { fetchPriceRecommendation, fetchDescription } from '../../aiResponses';
 
 
 type EditableAd = AdFeatures;
@@ -39,11 +39,18 @@ function AdEdit(){
     const [aiLoading, setAiLoading] = useState(false);
     const [isAiRequestedBefore, setIsAiRequestedBefore] = useState<boolean>(false);
 
+    // состояния для ai-кнопки описания
+    const [aiDescStatus, setDescStatus] = useState<'idle' | 'succes' | 'loading' | 'error'>('idle');
+    const [aidescription, setAiDescription] = useState<null | string> (null);
+    const [aiDescLoading, setAiDescLoading] = useState(false);
+    const [isAiDescRequested, setIsAiDescRequested] = useState<boolean>(false);
+    const [isDescPopoverOpen, setIsDescPopoverOpen] = useState(false);
 
+
+    // получение рыночной стоиомтси от ai
     const handleGetAiPrice = async () => {
         if (aiLoading || !formParams) return;
         setAiLoading(true);
-        setIsPopoverOpen(true);
         setIsAiRequestedBefore(true);
         setAiStatus('loading');
         try {
@@ -56,6 +63,7 @@ function AdEdit(){
             setAiResponse(data.textAnalysis);
             setAiParsedPrice(data.recommendedPrice);
             setAiStatus('success');
+            setIsPopoverOpen(true);
         } catch (err) {
             console.error("ошибка при обращении к ИИ сервису:", err);
             setAiStatus('error');
@@ -63,6 +71,29 @@ function AdEdit(){
             setAiLoading(false);
         }
     };
+
+    const handleGetAiDescription = async () => {
+        if (!formParams) return;
+        setDescStatus('loading');
+        setAiDescLoading(true);
+        setIsAiDescRequested(true);
+        try {
+            const data = await fetchDescription({
+                category: formParams.category,
+                title: formParams.title,
+                description: formParams.description,
+                params: formParams.params
+            });
+            setAiDescription(data.description);
+            setDescStatus('succes')
+            setIsDescPopoverOpen(true);
+        } catch (error) {
+            console.error("ошибка при обращении к ИИ сервису:", error);
+            setDescStatus('error')
+        }finally{
+            setAiDescLoading(false);
+        }
+    }
 
     // ф-я получения данных об объявлении
     useEffect(() => {
@@ -269,14 +300,12 @@ function AdEdit(){
                         <Popover
                             trigger={'click'}
                             open={isPopoverOpen}
-                            onOpenChange={(open) => {
-                                setIsPopoverOpen(open);
-                            }}
+                            onOpenChange={(open) => { if (!open) setIsPopoverOpen(false); }}
                             placement="top"
                             align={{offset:[80, -10] }}
                             content={
                                 <div style={{ maxWidth: '21rem' ,}}>
-                                    {aiStatus === 'loading' && <p>Анализ данных о товаре...</p>}
+                                    {/* {aiStatus === 'loading' && <p>Анализ данных о товаре...</p>} */}
                                     {aiStatus === 'error' && (
                                         <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
                                             <h4 style={{fontWeight:500, color:'rgba(192, 15, 12, 1)'}}>Произошла ошибка при запросе к AI</h4>
@@ -401,7 +430,73 @@ function AdEdit(){
                         showCount
                         autoSize={{ minRows: 4, maxRows: 8 }}
                     />
-                    <button className='ai-btn improve-desc'>Улучшить описание</button>
+                    <Popover
+                        open={isDescPopoverOpen}
+                        trigger={'click'}
+                        onOpenChange={(open) => { if (!open) setIsDescPopoverOpen(false); }}
+                        placement="top"
+                        align={{offset:[80, -10] }}
+                        content={
+                            <div style={{ maxWidth: '21rem'}}>
+                                {aiDescStatus === 'error' && (
+                                    <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
+                                        <h4 style={{fontWeight:500, color:'rgba(192, 15, 12, 1)'}}>Произошла ошибка при запросе к AI</h4>
+                                        <p style={{ color: 'rgba(30, 30, 30, 1)' }}>
+                                            Попробуйте повторить запрос или закройте уведомление
+                                        </p>
+                                        <button type="button" onClick={() => setIsDescPopoverOpen(false)} style={{backgroundColor:'rgba(252, 179, 173, 1)', color:'rgba(0, 0, 0, 0.85)', fontWeight:400, paddingInline:'0.5rem',borderRadius:'0.25rem', width:'fit-content'}}>
+                                            Закрыть
+                                        </button>
+                                    </div>
+                                )}
+
+                                {aiDescStatus === 'succes' && (
+                                    <div>
+                                            <h4>Ответ AI</h4>
+                                            <p style={{ whiteSpace: 'pre-line', margin: '10px 0' }}>{aidescription}</p>
+                                            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                                                <button
+                                                    type="button"
+                                                    className="submitForm"
+                                                    style={{ padding: '4px 12px', height: 'auto' }}
+                                                    onClick={() => {
+                                                        fieldChange('description', String(aidescription));
+                                                        setIsDescPopoverOpen(false);
+                                                    }}
+                                                >
+                                                    Применить
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="cancelFormChanges"
+                                                    style={{ padding: '4px 12px', height: 'auto' }}
+                                                    onClick={() => setIsDescPopoverOpen(false)}
+                                                >
+                                                    Закрыть
+                                                </button>
+                                            </div>
+                                    </div>
+                                )}
+                            </div>
+                        }
+                    >
+                        <button 
+                            className='ai-btn improve-desc'
+                            onClick={handleGetAiDescription}
+                            type='button'
+                            disabled={aiDescLoading || !formParams.title.trim()}
+                        >
+                            {aiDescLoading 
+                                ? 'Выполняется запрос' 
+                                : isAiDescRequested
+                                    ? 'Повторить запрос'
+                                    : formParams.description 
+                                        ? 'Улучшить описание'
+                                        : 'Придумать опсиание'
+                            }
+                        </button>
+                    </Popover>
+                    
                 </div>
                 <div className="form-actions">
                     <button 

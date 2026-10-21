@@ -280,6 +280,98 @@ fastify.post('/items/ai-recommend-price', async (request, reply) => {
   }
 });
 
+fastify.post('/items/ai-description', async (request, reply) => {
+  const apiKey = process.env.OLLAMA_API_KEY;
+
+  if (!apiKey) {
+    return reply
+      .status(500)
+      .send({ success: false, error: 'OLLAMA_API_KEY не задан в .env сервера' });
+  }
+
+  const { category, title, description, params } = request.body as any;
+  const hasDescription = Boolean(description?.trim());
+
+
+  const prompt = `
+  Категория: ${category}
+  Название: ${title}
+  Характеристики: ${params ? JSON.stringify(params) : 'Не указаны'}
+  ${hasDescription
+    ? `Текущее описание (улучши его):\n${description}`
+    : 'Описания нет, напиши его с нуля.'}
+  `.trim();
+
+
+  try {
+    const response = await fetch(OLLAMA_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        stream: false,
+        options: { temperature: 0.7 },
+        format: {
+          type: 'object',
+          properties: {
+            description: { type: 'string' },
+          },
+          required: ['description'],
+        },
+        messages: [
+          {
+            role: 'system',
+            content: `
+                  Ты копирайтер объявлений на российской площадке Авито. Пиши строго на русском.
+                  Тебе даны категория, название, описание (может быть пустым) и характеристики товара. Верни JSON с одним полем "description".
+
+                  Как писать:
+                  - 4-5 предложений, живой человеческий язык, от лица продавца, без воды, без капса, без эмодзи.
+                  - Если описание уже есть, улучши его: сделай понятнее и привлекательнее, сохрани все факты из него и не добавляй новых.
+                  - Если описания нет, напиши с нуля по названию, категории и характеристикам.
+                  - Не пересказывай подряд все характеристики, упоминай только то, что реально важно покупателю.
+                  - Не упоминай цену.
+
+                  Главное правило: используй только те факты, которые есть во входных данных. Не придумывай состояние, комплектацию, гарантию, причину продажи и прочие детали, если их нет. Если данных мало, напиши коротко и нейтрально.
+                  `.trim()
+          },
+          { role: 'user', content: prompt },
+        ]
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return reply
+        .status(response.status)
+        .send({ success: false, error: `Ошибка Ollama: ${errText}` });
+    }
+
+    const data = (await response.json()) as { message?: { content?: string } };
+    const raw = data.message?.content;
+
+    if (!raw) {
+      return reply.status(500).send({ success: false, error: 'ИИ вернул пустой ответ' });
+    }
+
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    const text = String(parsed.description ?? '').trim();
+    if (!text) {
+      return reply.status(502).send({ success: false, error: 'ИИ вернул пустое описание, попробуйте ещё раз' });
+    }
+    return { description: text };
+
+  } catch (err: any) {
+    request.log.error(err);
+    return reply
+      .status(500)
+      .send({ success: false, error: err.message || 'Внутренняя ошибка сервера' });
+  }
+})
+
 
 const port = Number(process.env.PORT || process.env.port) || 8080;
 
