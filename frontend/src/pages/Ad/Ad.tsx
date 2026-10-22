@@ -1,8 +1,8 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import type { AutoItemParams, RealEstateItemParams, ElectronicsItemParams, AdFeatures } from "../../types";
 import img from "../../assets/placeholder-image.png"
-import { Alert } from "antd";
+import { Alert, Result, Button } from "antd";
 import './Ad.css'
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css'
@@ -25,6 +25,8 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
 
 function Ad(){
     const {id} = useParams<{id:string}>();
+    const navigate = useNavigate();
+    const [reloadKey, setReloadKey] = useState(0);
     // состояние для объявления
     const [ad, setAd] = useState<AdFeatures | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -60,11 +62,35 @@ function Ad(){
         return () => {
             cancelled = true;
         };
-    }, [id])
+    }, [id, reloadKey])
 
 
-    if (!loading && (error || !ad)) {
-        return <div className="ad-status ad-status--error">Ошибка: {error || 'Объявление не найдено'}</div>;
+    if (!loading && error) {
+        return (
+            <Result
+                status="error"
+                title="Не удалось загрузить объявление"
+                subTitle="Проверьте соединение и попробуйте ещё раз"
+                extra={[
+                    <Button type="primary" key="retry" onClick={() => setReloadKey(k => k + 1)}>
+                        Повторить
+                    </Button>,
+                    <Button key="back" onClick={() => navigate('/ads')}>
+                        К списку
+                    </Button>,
+                ]}
+            />
+        );
+    }
+    if (!loading && !ad) {
+        return (
+            <Result
+                status="404"
+                title="Объявление не найдено"
+                subTitle="Возможно, оно было удалено"
+                extra={<Button type="primary" onClick={() => navigate('/ads')}>К списку объявлений</Button>}
+            />
+        )
     }
 
     const creationDate = ad ? dateFormatter.format(new Date(ad.createdAt)) : '';

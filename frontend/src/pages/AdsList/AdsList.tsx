@@ -2,7 +2,7 @@ import {useState, useEffect, type ChangeEvent } from 'react'
 import {Link} from "react-router-dom"
 import './AdsList.css'
 import AdItem from '../../components/AdItem/AdItem'
-import {Switch} from 'antd';
+import {Switch, Result, Button} from 'antd';
 import type {Item, ItemsGetOut, Filters, Sort} from "../../types"
 import { categoryNames, itemsCategories } from '../../types';
 import Skeleton from 'react-loading-skeleton';
@@ -13,6 +13,7 @@ function AdList(){
     const [totalItems, setTotalItems] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [reloadKey, setReloadKey] = useState(0);
 
     // состояние для строки поиска
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -89,7 +90,7 @@ function AdList(){
     // обновление получения товаров при фильтрации
     useEffect(()=>{
         getItems();
-    }, [filters.category, filters.needsRevision, searchQuery, currentPage, sort])
+    }, [filters.category, filters.needsRevision, searchQuery, currentPage, sort,reloadKey])
 
     // ф-я обновления категорий
     const handleCategoryChange = (category: string) => {
@@ -127,6 +128,21 @@ function AdList(){
         setCurrentPage(1)
     }
     const filtersEmpty = filters.category.length > 0 || filters.needsRevision;
+
+    if (!isLoading && error) {
+        return (
+            <Result
+                status="error"
+                title="Не удалось загрузить объявления"
+                subTitle="Проверьте соединение и попробуйте ещё раз"
+                extra={[
+                    <Button type="primary" key="retry" onClick={() => setReloadKey(k => k + 1)}>
+                        Повторить
+                    </Button>,
+                ]}
+            />
+        );
+    }
     return(
         <>
             {isLoading ?(
