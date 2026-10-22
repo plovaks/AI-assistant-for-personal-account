@@ -77,3 +77,8 @@
 .ad-description{
     width: 30rem;
 }
+
+.params-list .param > span:has(.react-loading-skeleton) {
+    display: block;
+    width: 60%;
+}

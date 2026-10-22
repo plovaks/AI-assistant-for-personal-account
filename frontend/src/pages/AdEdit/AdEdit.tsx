@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './AdEdit.css'
-import { Input, Select, message,Popover } from 'antd';
+import { Input, Select, message,Popover, Skeleton } from 'antd';
 import type { AdFeatures, ItemUpdateIn, AutoItemParams, RealEstateItemParams, ElectronicsItemParams, FormParams} from '../../types';
 import {  
     autoLabels, 
@@ -122,7 +122,54 @@ function AdEdit(){
     }, [id])
 
     if (loading) {
-        return <div className="ad-status">Загрузка объявления...</div>;
+    return (
+        <div className="edit-container">
+            <h1>Редактирование объявления</h1>
+            <div className="edit-form">
+                <div className="edit edit-category">
+                    <Skeleton.Input active size="small" style={{ width: 90 }} />
+                    <Skeleton.Input active block />
+                </div>
+                <div className="divider-line"></div>
+
+                <div className="edit edit-title">
+                    <Skeleton.Input active size="small" style={{ width: 90 }} />
+                    <Skeleton.Input active block />
+                </div>
+                <div className="divider-line"></div>
+
+                <div className="input-price-actions">
+                    <div className="edit edit-price">
+                        <Skeleton.Input active size="small" style={{ width: 60 }} />
+                        <Skeleton.Input active block />
+                    </div>
+                    <Skeleton.Button active style={{ width: 170 }} />
+                </div>
+                <div className="divider-line"></div>
+
+                <Skeleton.Input active size="small" style={{ width: 120 }} />
+                <div className="edit edit-cahracteristics">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="edit-param-field">
+                            <Skeleton.Input active size="small" style={{ width: 100, marginBottom:'10px'}} />
+                            <Skeleton.Input active block />
+                        </div>
+                    ))}
+                </div>
+                <div className="divider-line"></div>
+
+                <div className="edit edit-desc">
+                    <Skeleton.Input active size="small" style={{ width: 90 }} />
+                    <Skeleton active title={false} paragraph={{ rows: 4 }} />
+                </div>
+
+                <div className="form-actions">
+                    <Skeleton.Button active />
+                    <Skeleton.Button active />
+                </div>
+            </div>
+        </div>
+    );
     }
     if (error || !formParams) {
         return <div className="ad-status ad-status--error">Ошибка: {error || 'Объявление не найдено'}</div>;

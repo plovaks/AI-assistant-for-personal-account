@@ -5,6 +5,8 @@ import AdItem from '../../components/AdItem/AdItem'
 import {Switch} from 'antd';
 import type {Item, ItemsGetOut, Filters, Sort} from "../../types"
 import { categoryNames, itemsCategories } from '../../types';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css'
 
 function AdList(){
     const [items, setItems] = useState<Item[]>([]);
@@ -127,7 +129,58 @@ function AdList(){
     const filtersEmpty = filters.category.length > 0 || filters.needsRevision;
     return(
         <>
-            <div className='ads '>
+            {isLoading ?(
+                <div className='ads'>
+                    <div className="ads-list__header">
+                        <h2><Skeleton width={180} /></h2>
+                        <p><Skeleton width={100} /></p>
+                    </div>
+                    <div className="ads-list__search">
+                        <div className="search">
+                            <div >
+                                <Skeleton width="100%"/>
+                            </div>
+                        </div>
+                        <div >
+                            <Skeleton width={200}  />
+                        </div>
+                    </div>
+
+                    <div className="ads-list__feed">
+                        <div className="ads-feed-filters-container">
+                            <div className="filters">
+                                <h3><Skeleton width={100} /></h3>
+                                <p><Skeleton width={80} /></p>
+                                <div className='dropdown-content'>
+                                    {itemsCategories.map((category: string, index) => (
+                                        <label key={index} className='filter-item-category' style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Skeleton circle width={16} height={16} />
+                                            <Skeleton width={120} />
+                                        </label>
+                                    ))}
+                                </div>
+                                <div className='divider-filters-line'></div>
+                                <div className="filter-toggle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span><Skeleton width={150} /></span>
+                                    <Skeleton width={44} height={22} borderRadius={100} />
+                                </div>
+                            </div>
+                            <div>
+                                <Skeleton width="100%" height={40}/>
+                            </div>
+                        </div>
+                        <div className="ads-feed-container">
+                            <div className='ads-items'>
+                                {Array.from({ length: itemsPerPage }).map((_, index) => (
+                                    <AdItem key={index} isLoading={true} category="" name='' price={0} needsRevision={true}/>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )
+            :
+            (<div className='ads '>
                 <div className="ads-list__header">
                     <h2 className='font-medium'>Мои объявления</h2>
                     <p className='text-[#848388] font-normal'>{totalItems} объявления</p>
@@ -221,6 +274,7 @@ function AdList(){
                                         name={item.title}
                                         price={item.price}
                                         needsRevision={item.needsRevision}
+                                        isLoading={isLoading}
                                     />
                                 </Link> 
                         ))}
@@ -267,7 +321,8 @@ function AdList(){
                     </div>
                     
                 </div>
-            </div>
+            </div>)
+        }       
         </>
         
     )
