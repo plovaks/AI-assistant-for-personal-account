@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './AdEdit.css'
-import { Input, Select, message,Popover, Skeleton } from 'antd';
+import { Input, Select, message,Popover, Skeleton, Button, Result } from 'antd';
 import type { AdFeatures, ItemUpdateIn, AutoItemParams, RealEstateItemParams, ElectronicsItemParams, FormParams} from '../../types';
 import {  
     autoLabels, 
@@ -25,10 +25,11 @@ function AdEdit(){
     const {id} = useParams<{id:string}>();
     const navigate = useNavigate();
     const location = useLocation();
+    const [reloadKey, setReloadKey] = useState(0);
     const fromPath = location.state?.from || `/ad/${id}`;
     const [adInfo, setAdInfo] = useState<EditableAd | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<boolean | null>(null);
+    const [error, setError] = useState<string | null>(null);
     // состояние для парметров формы
     const [formParams,setFormParams] = useState<AdFeatures | null>(null)
     // состояния для ai статусов
@@ -47,6 +48,7 @@ function AdEdit(){
     const [isDescPopoverOpen, setIsDescPopoverOpen] = useState(false);
 
 
+    const draftKey = (id: string) => `ad-draft-${id}`;
     // получение рыночной стоиомтси от ai
     const handleGetAiPrice = async () => {
         if (aiLoading || !formParams) return;
@@ -97,29 +99,41 @@ function AdEdit(){
 
     // ф-я получения данных об объявлении
     useEffect(() => {
-        const loadAdInfo = async() => {
-            if(!id) return;
+    if (!id) return;
+    let cancelled = false;
 
-            try {
-                const res = await fetch(`/items/${id}`);
-                if(!res){
-                    throw new Error('ошибка обращения к url объявления');
-                }
-
-                const data:AdFeatures = await res.json();
-                console.log(data);
-                setAdInfo(data);
-                setFormParams(data);
-            } catch (error) {
-                console.error('ошибка получения данных об объявлении: ',error);
-                setError(true);
-            }finally{
-                setLoading(false);
+    const loadAdInfo = async () => {
+        setLoading(true);   
+        setError(null);     
+        try {
+            const res = await fetch(`/items/${id}`);
+            if (!res.ok) {  
+                throw new Error(`ошибка обращения к url объявления: ${res.status}`);
             }
-
+            const data: AdFeatures = await res.json();
+            if (!cancelled) {
+                setAdInfo(data);
+                const saved = localStorage.getItem(draftKey(id));
+                setFormParams(saved ? JSON.parse(saved) : data);
+            }
+        } catch (err) {
+            console.error('ошибка получения данных об объявлении: ', err);
+            if (!cancelled) setError('Не удалось загрузить объявление');
+        } finally {
+            if (!cancelled) setLoading(false);
         }
-        loadAdInfo();
-    }, [id])
+    };
+
+    loadAdInfo();
+    return () => {
+        cancelled = true;
+    };
+    }, [id, reloadKey]);
+
+    useEffect(() => {
+        if (!id || !formParams || formParams === adInfo) return;
+        localStorage.setItem(draftKey(id), JSON.stringify(formParams));
+    }, [formParams, adInfo, id]);
 
     if (loading) {
     return (
@@ -171,9 +185,24 @@ function AdEdit(){
         </div>
     );
     }
-    if (error || !formParams) {
-        return <div className="ad-status ad-status--error">Ошибка: {error || 'Объявление не найдено'}</div>;
-    }
+    
+    if (error || !formParams){
+    return (
+        <Result
+            status="error"
+            title="Не удалось загрузить форму редактирования"
+            subTitle="Проверьте соединение и попробуйте ещё раз"
+            extra={[
+                <Button type="primary" key="retry" onClick={() => setReloadKey(k => k + 1)}>
+                    Повторить
+                </Button>,
+                <Button key="back" onClick={() => navigate(`/ads`)}>
+                    К списку объявлений
+                </Button>,
+            ]}
+        />
+    );
+}
 
     // ф-я для изменения поля формы
     const fieldChange = (key:keyof AdFeatures, value:any) => {
@@ -253,7 +282,7 @@ function AdEdit(){
                 throw new Error('возникла ошибка отправления параметров формы на url');
             }
             message.success('Изменения сохранены')
-
+            localStorage.removeItem(draftKey(id));
             console.log('парметры обновлены, статус: ', res.status);
             navigate(fromPath, { replace: true });
             
@@ -557,7 +586,10 @@ function AdEdit(){
                     <button   
                         type='button' 
                         className='cancelFormChanges'
-                        onClick={() => navigate(fromPath, {replace:true})}
+                        onClick={() => {
+                            if (id) localStorage.removeItem(draftKey(id));
+                            navigate(fromPath, { replace: true });
+                        }}
                     >
                         Отменить
                     </button>
