@@ -9,6 +9,22 @@
     flex-direction: column;
 }
 
+.ads-items-row .item-container{
+    display: flex;
+    flex-direction: row;
+}
+
+.ads-items-row .item-img-container {
+  width: 11rem;          
+  height: 8rem;         
+  flex-shrink: 0;        
+  aspect-ratio: 4;
+}
+
+.ads-items-row .item-category{
+    display: none;
+}
+
 .item-img-container{
     background-color: #FAFAFA;
     position: relative;
