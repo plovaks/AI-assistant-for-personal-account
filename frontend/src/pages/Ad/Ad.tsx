@@ -1,5 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { observer } from "mobx-react-lite";
+import { adDetailsStore } from "../../stores/adDetails.store";
 import type { AutoItemParams, RealEstateItemParams, ElectronicsItemParams, AdFeatures } from "../../types";
 import img from "../../assets/placeholder-image.png"
 import { Alert, Result, Button } from "antd";
@@ -23,56 +25,30 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
         minute:'2-digit'
 })
 
-function Ad(){
+const Ad = observer(() => {
     const {id} = useParams<{id:string}>();
     const navigate = useNavigate();
-    const [reloadKey, setReloadKey] = useState(0);
-    // состояние для объявления
-    const [ad, setAd] = useState<AdFeatures | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-
     
     useEffect(() => {
-        if (!id) return;
-        let cancelled = false;
-
-        const getAd = async() => {
-            setLoading(true);
-            setError(null);
-            try {
-                const res = await fetch(`/items/${id}`);
-
-                if(!res.ok){
-                    throw new Error(`ошибка обращения к url объявения: ${res.status}`);
-                }
-
-                const data:AdFeatures = await res.json();
-                if (!cancelled) setAd(data);
-                
-            } catch (error) {
-                console.error('ошибка получения данных об объявлении: ',error);
-                if (!cancelled) setError('Не удалось загрузить объявление');
-            }finally{
-                if (!cancelled) setLoading(false);
-            }
+        if(id){
+            adDetailsStore.fetchAdById(id);
         }
-        getAd();
 
         return () => {
-            cancelled = true;
-        };
-    }, [id, reloadKey])
+            adDetailsStore.clear()
+        }
+        
+    }, [id])
 
 
-    if (!loading && error) {
+    if (!adDetailsStore.loading && adDetailsStore.error) {
         return (
             <Result
                 status="error"
                 title="Не удалось загрузить объявление"
                 subTitle="Проверьте соединение и попробуйте ещё раз"
                 extra={[
-                    <Button type="primary" key="retry" onClick={() => setReloadKey(k => k + 1)}>
+                    <Button type="primary" key="retry" onClick={() => id && adDetailsStore.fetchAdById(id)}>
                         Повторить
                     </Button>,
                     <Button key="back" onClick={() => navigate('/ads')}>
@@ -82,7 +58,7 @@ function Ad(){
             />
         );
     }
-    if (!loading && !ad) {
+    if (!adDetailsStore.loading && !adDetailsStore.ad) {
         return (
             <Result
                 status="404"
@@ -93,6 +69,7 @@ function Ad(){
         )
     }
 
+    const ad = adDetailsStore.ad;
     const creationDate = ad ? dateFormatter.format(new Date(ad.createdAt)) : '';
     const updateDate = ad ? dateFormatter.format(new Date(ad.updatedAt)) : '';
 
@@ -152,7 +129,7 @@ function Ad(){
     return(
         
         <>
-        {loading || !ad ? 
+        {adDetailsStore.loading || !ad ? 
             
             (
                 <div className="ad">
@@ -275,6 +252,8 @@ function Ad(){
         }
         </>
     )
-}
+})
+
+    
 
 export default Ad;
