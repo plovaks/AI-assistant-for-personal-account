@@ -9,6 +9,7 @@
 ## Стек
 - **React**
 - **react-router-dom**
+- **MobX** - для управления состояниями
 - **HTML5**
 - **CSS3**, **Tailwind**
 - **Ant Design**

@@ -34,6 +34,16 @@ export type Sort = {
     direction: 'asc' | 'desc' | ''
 }
 
+// тип для запроса объявлений с сервера
+export type FetchParams = {
+    limit:number,
+    skip:number,
+    searchQuery:string,
+    categories:string[],
+    needsRevision:boolean,
+    sort: Sort
+}
+
 // типы для редактирвоания объявления 
 export type ItemUpdateIn = {
   category: 'auto' | 'real_estate' | 'electronics';
@@ -77,6 +87,8 @@ export type AdFeatures = Item & {
 export type FormParams = Item & {
     params?:AutoItemParams | RealEstateItemParams | ElectronicsItemParams
 }
+
+export type View = 'row' | 'grid';
 
 // перевод имен совйств на русский язык
 export const autoLabels: Record<keyof AutoItemParams, string> = {

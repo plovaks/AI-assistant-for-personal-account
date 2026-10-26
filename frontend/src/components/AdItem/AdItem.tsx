@@ -47,6 +47,7 @@ function AdItem ({category, name, price, needsRevision, isLoading} : AdItemProps
                         </div>
                     
                         <div className='item-body-container'>
+                            
                             <p className='item-name'>{name}</p>
                             <p className='item-price'>{price} {'\u20BD'}</p>
                             {needsRevision && (
