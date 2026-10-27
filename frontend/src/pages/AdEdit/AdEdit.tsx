@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { observer } from 'mobx-react-lite';
 import './AdEdit.css'
 import { Input, Select, message,Popover, Skeleton, Button, Result } from 'antd';
 import type { AdFeatures, ItemUpdateIn, AutoItemParams, RealEstateItemParams, ElectronicsItemParams, FormParams} from '../../types';
@@ -12,7 +13,8 @@ import {
     validateAdFields
 } from '../../types';
 import { fetchPriceRecommendation, fetchDescription } from '../../aiResponses';
-
+import { adEditUiStore } from '../../stores/adEditUi.store';
+import { adDetailsStore } from '../../stores/adDetails.store';
 
 type EditableAd = AdFeatures;
 
@@ -20,122 +22,41 @@ const selectCategoryOptions = itemsCategories.map(element => ({
     value:element,
     label:categoryNames[element]
 }));
+const draftKey = (id: string) => `ad-draft-${id}`;
 
-function AdEdit(){
+const AdEdit = observer(() => {
     const {id} = useParams<{id:string}>();
     const navigate = useNavigate();
     const location = useLocation();
-    const [reloadKey, setReloadKey] = useState(0);
     const fromPath = location.state?.from || `/ad/${id}`;
-    const [adInfo, setAdInfo] = useState<EditableAd | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    // состояние для парметров формы
-    const [formParams,setFormParams] = useState<AdFeatures | null>(null)
-    // состояния для ai статусов
-    const [aiStatus, setAiStatus] = useState<'idle' | 'success' | 'loading' | 'error'>('idle');
-    const [aiResponse, setAiResponse] = useState<string>('');
-    const [aiParsedPrice, setAiParsedPrice] = useState<number | null>(null);
-    const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
-    const [aiLoading, setAiLoading] = useState(false);
-    const [isAiRequestedBefore, setIsAiRequestedBefore] = useState<boolean>(false);
-
-    // состояния для ai-кнопки описания
-    const [aiDescStatus, setDescStatus] = useState<'idle' | 'succes' | 'loading' | 'error'>('idle');
-    const [aidescription, setAiDescription] = useState<null | string> (null);
-    const [aiDescLoading, setAiDescLoading] = useState(false);
-    const [isAiDescRequested, setIsAiDescRequested] = useState<boolean>(false);
-    const [isDescPopoverOpen, setIsDescPopoverOpen] = useState(false);
-
-
-    const draftKey = (id: string) => `ad-draft-${id}`;
-    // получение рыночной стоиомтси от ai
-    const handleGetAiPrice = async () => {
-        if (aiLoading || !formParams) return;
-        setAiLoading(true);
-        setIsAiRequestedBefore(true);
-        setAiStatus('loading');
-        try {
-            const data = await fetchPriceRecommendation({
-                category: formParams.category,
-                title: formParams.title,
-                description: formParams.description,
-                params: formParams.params
-            });
-            setAiResponse(data.textAnalysis);
-            setAiParsedPrice(data.recommendedPrice);
-            setAiStatus('success');
-            setIsPopoverOpen(true);
-        } catch (err) {
-            console.error("ошибка при обращении к ИИ сервису:", err);
-            setAiStatus('error');
-        } finally {
-            setAiLoading(false);
-        }
-    };
-
-    const handleGetAiDescription = async () => {
-        if (!formParams) return;
-        setDescStatus('loading');
-        setAiDescLoading(true);
-        setIsAiDescRequested(true);
-        try {
-            const data = await fetchDescription({
-                category: formParams.category,
-                title: formParams.title,
-                description: formParams.description,
-                params: formParams.params
-            });
-            setAiDescription(data.description);
-            setDescStatus('succes')
-            setIsDescPopoverOpen(true);
-        } catch (error) {
-            console.error("ошибка при обращении к ИИ сервису:", error);
-            setDescStatus('error')
-        }finally{
-            setAiDescLoading(false);
-        }
-    }
 
     // ф-я получения данных об объявлении
     useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-
-    const loadAdInfo = async () => {
-        setLoading(true);   
-        setError(null);     
-        try {
-            const res = await fetch(`/items/${id}`);
-            if (!res.ok) {  
-                throw new Error(`ошибка обращения к url объявления: ${res.status}`);
+        if (!id) return;
+        const initData = async() => {
+            if(!adDetailsStore.ad || adDetailsStore.ad.id !== id){
+                await adDetailsStore.fetchAdById(id)
             }
-            const data: AdFeatures = await res.json();
-            if (!cancelled) {
-                setAdInfo(data);
+
+            if(adDetailsStore.ad){
                 const saved = localStorage.getItem(draftKey(id));
-                setFormParams(saved ? JSON.parse(saved) : data);
+                adEditUiStore.initForm(adDetailsStore.ad,saved);
             }
-        } catch (err) {
-            console.error('ошибка получения данных об объявлении: ', err);
-            if (!cancelled) setError('Не удалось загрузить объявление');
-        } finally {
-            if (!cancelled) setLoading(false);
         }
-    };
 
-    loadAdInfo();
-    return () => {
-        cancelled = true;
-    };
-    }, [id, reloadKey]);
+        initData();
+        return () => {
+            adEditUiStore.clearUiState();
+        }
+        
+    }, [id]);
 
     useEffect(() => {
-        if (!id || !formParams || formParams === adInfo) return;
-        localStorage.setItem(draftKey(id), JSON.stringify(formParams));
-    }, [formParams, adInfo, id]);
+        if (!id || !adEditUiStore.formParams || adEditUiStore.formParams === adDetailsStore.ad) return;
+        localStorage.setItem(draftKey(id), JSON.stringify(adEditUiStore.formParams));
+    }, [adEditUiStore.formParams, id]);
 
-    if (loading) {
+    if (adDetailsStore.loading || !adEditUiStore.formParams) {
     return (
         <div className="edit-container">
             <h1>Редактирование объявления</h1>
@@ -186,14 +107,14 @@ function AdEdit(){
     );
     }
     
-    if (error || !formParams){
+    if (adDetailsStore.error){
     return (
         <Result
             status="error"
             title="Не удалось загрузить форму редактирования"
             subTitle="Проверьте соединение и попробуйте ещё раз"
             extra={[
-                <Button type="primary" key="retry" onClick={() => setReloadKey(k => k + 1)}>
+                <Button type="primary" key="retry" onClick={() => id && adDetailsStore.fetchAdById(id)}>
                     Повторить
                 </Button>,
                 <Button key="back" onClick={() => navigate(`/ads`)}>
@@ -204,56 +125,7 @@ function AdEdit(){
     );
 }
 
-    // ф-я для изменения поля формы
-    const fieldChange = (key:keyof AdFeatures, value:any) => {
-        if(!formParams)return;
-
-        setFormParams({
-            ...formParams,
-            [key]:value
-        })
-    }
-
-    // ф-я изменения категории
-    const handleCategoryChange = (value: 'auto' | 'real_estate' | 'electronics') => {
-        setFormParams(prev => {
-            if (!prev) return null;
-
-            const isOriginalCategory = adInfo && adInfo.category === value;
-
-            return{
-                ...prev,
-                category:value,
-                params: isOriginalCategory ? { ...adInfo.params } : {}
-            }
-            
-        })
-    }
-
-    const handleParamsChange = (paramaName:string, value:any) => {
-        setFormParams(prev => {
-            if(!prev) return null;
-
-            return{
-                ...prev,
-                params:{
-                    ...prev.params,
-                    [paramaName]:value
-                }
-            }
-        })
-    }
-    
-    // ф-я проверки пустого поля
-    const isEmtyValue = (val:any):boolean =>{
-        if (val === undefined || val === null) return true;
-        if (typeof val === 'string') return val.trim() === '';
-        if (typeof val === 'number') return false;
-        return false;
-    }
-    
-    // ф-я запросов к AI для уточнения цены
-
+    const formParams = adEditUiStore.formParams;
 
     // ф-я отправки формы на сервер
     const handleSubmitForm = async(e:React.FormEvent) => {
@@ -270,20 +142,9 @@ function AdEdit(){
                 needsRevision:needsRevision
             }
 
-            const res = await fetch(`/items/${id}`, {
-                method:'PUT',
-                headers:{
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(bodyToSend)
-            })
-
-            if(!res.ok){
-                throw new Error('возникла ошибка отправления параметров формы на url');
-            }
+            const res = await adDetailsStore.updatedAd(id,bodyToSend);
             message.success('Изменения сохранены')
             localStorage.removeItem(draftKey(id));
-            console.log('парметры обновлены, статус: ', res.status);
             navigate(fromPath, { replace: true });
             
         } catch (error) {
@@ -292,7 +153,11 @@ function AdEdit(){
         }
     }
 
-    const isFormInvalid = isEmtyValue(formParams.category) || isEmtyValue(formParams.title.trim()) || isEmtyValue(formParams.price) || Number(formParams.price) <= 0;
+    const isEmptyValue = (val: any): boolean => {
+        if (val === undefined || val === null) return true;
+        if (typeof val === 'string') return val.trim() === '';
+        return false;
+    };
 
     return(
         <div className="edit-container">
@@ -309,7 +174,7 @@ function AdEdit(){
                         
                     )}
                     <Select
-                        onChange={(value) => handleCategoryChange(value)}
+                        onChange={(value) => adEditUiStore.changeCategory(value, adDetailsStore.ad)}
                         id='category-select'
                         value={formParams.category}
                         options={selectCategoryOptions}
@@ -332,7 +197,7 @@ function AdEdit(){
                     )}
                     <Input 
                         className={`${formParams?.title.trim() ? '': 'input-required-error'}`}
-                        onChange={(e)=> fieldChange('title', e.target.value)}
+                        onChange={(e)=> adEditUiStore.changeField('title',e.target.value)}
                         required 
                         allowClear
                         value={formParams?.title}
@@ -359,7 +224,7 @@ function AdEdit(){
                             required
                             allowClear
                             value={formParams.price}
-                            onChange={(e) => fieldChange('price', e.target.value)}
+                            onChange={(e) => adEditUiStore.changeField('price', Number(e.target.value))}
 
                             onKeyDown={(e) => {
                                 if (['-', '+', '.', ',', 'e', 'E'].includes(e.key)) {
@@ -375,37 +240,37 @@ function AdEdit(){
                     {formParams.price && (
                         <Popover
                             trigger={'click'}
-                            open={isPopoverOpen}
-                            onOpenChange={(open) => { if (!open) setIsPopoverOpen(false); }}
+                            open={adEditUiStore.isPopoverOpen}
+                            onOpenChange={(open) => adEditUiStore.setPopoverOpen(open)}
                             placement="top"
                             align={{offset:[80, -10] }}
                             content={
                                 <div style={{ maxWidth: '21rem' ,}}>
                                     {/* {aiStatus === 'loading' && <p>Анализ данных о товаре...</p>} */}
-                                    {aiStatus === 'error' && (
+                                    {adEditUiStore.aiStatus === 'error' && (
                                         <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
                                             <h4 style={{fontWeight:500, color:'rgba(192, 15, 12, 1)'}}>Произошла ошибка при запросе к AI</h4>
                                             <p style={{ color: 'rgba(30, 30, 30, 1)' }}>
                                                 Попробуйте повторить запрос или закройте уведомление
                                             </p>
-                                            <button type="button" onClick={() => setIsPopoverOpen(false)} style={{backgroundColor:'rgba(252, 179, 173, 1)', color:'rgba(0, 0, 0, 0.85)', fontWeight:400, paddingInline:'0.5rem',borderRadius:'0.25rem', width:'fit-content'}}>
+                                            <button type="button" onClick={() => adEditUiStore.setPopoverOpen(false)} style={{backgroundColor:'rgba(252, 179, 173, 1)', color:'rgba(0, 0, 0, 0.85)', fontWeight:400, paddingInline:'0.5rem',borderRadius:'0.25rem', width:'fit-content'}}>
                                                 Закрыть
                                             </button>
                                         </div>
                                     )}
-                                    {aiStatus === 'success' && (
+                                    {adEditUiStore.aiStatus === 'success' && (
                                         <div>
                                             <h4>Ответ AI</h4>
-                                            <p><b>Рекомендуемая цена: {aiParsedPrice?.toLocaleString('ru-RU')} ₽</b></p>
-                                            <p style={{ whiteSpace: 'pre-line', margin: '10px 0' }}>{aiResponse}</p>
+                                            <p><b>Рекомендуемая цена: {adEditUiStore.aiParsedPrice?.toLocaleString('ru-RU')} ₽</b></p>
+                                            <p style={{ whiteSpace: 'pre-line', margin: '10px 0' }}>{adEditUiStore.aiResponse}</p>
                                             <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                                                 <button
                                                     type="button"
                                                     className="submitForm"
                                                     style={{ padding: '4px 12px', height: 'auto' }}
                                                     onClick={() => {
-                                                        if (aiParsedPrice !== null) fieldChange('price', String(aiParsedPrice));
-                                                        setIsPopoverOpen(false);
+                                                        if (adEditUiStore.aiParsedPrice !== null) adEditUiStore.changeField('price', adEditUiStore.aiParsedPrice);
+                                                        adEditUiStore.setPopoverOpen(false);
                                                     }}
                                                 >
                                                     Применить
@@ -414,7 +279,7 @@ function AdEdit(){
                                                     type="button"
                                                     className="cancelFormChanges"
                                                     style={{ padding: '4px 12px', height: 'auto' }}
-                                                    onClick={() => setIsPopoverOpen(false)}
+                                                    onClick={() => adEditUiStore.setPopoverOpen(false)}
                                                 >
                                                     Закрыть
                                                 </button>
@@ -425,10 +290,10 @@ function AdEdit(){
                             }
                            
                         >
-                            <button type="button" onClick={handleGetAiPrice} disabled={aiLoading} className='ai-btn'>
-                                {aiLoading 
+                            <button type="button" onClick={adEditUiStore.getAiPrice} disabled={adEditUiStore.aiLoading} className='ai-btn'>
+                                {adEditUiStore.aiLoading 
                                     ? 'Выполняется запрос' 
-                                    : isAiRequestedBefore 
+                                    : adEditUiStore.isAiRequestedBefore 
                                         ? 'Повторить запрос' 
                                         : 'Узнать рыночную цену'
                                 }
@@ -448,14 +313,14 @@ function AdEdit(){
                                 return Object.entries(autoLabels).map(([key, label])=> {
                                     const params = currentParams as AutoItemParams;
                                     const currentValue = params[key as keyof AutoItemParams];
-                                    const isParamEmty = isEmtyValue(currentValue);
+                                    const isParamEmty = isEmptyValue(currentValue);
                                     return (
                                         <div key={key} className="edit-param-field">
                                             <label className='edit-param-label'>{label}</label>
                                             <Input 
                                                 className={`${isParamEmty ? 'input-empty': ''}`}
                                                 value={currentValue ?? ''} 
-                                                onChange={(e) => handleParamsChange(key,e.target.value)}
+                                                onChange={(e) => adEditUiStore.changeParam(key, e.target.value)}
                                             />
                                         </div>
                                     );
@@ -464,14 +329,14 @@ function AdEdit(){
                             return Object.entries(realEstateLabels).map(([key, label]) => {
                                 const params = currentParams as RealEstateItemParams;
                                 const currentValue = params[key as keyof RealEstateItemParams];
-                                const isParamEmty = isEmtyValue(currentValue);
+                                const isParamEmty = isEmptyValue(currentValue);
                                 return (
                                     <div key={key} className="edit-param-field">
                                         <label className='edit-param-label'>{label}</label>
                                         <Input 
                                             className={`${isParamEmty ? 'input-empty': ''}`}
                                             value={currentValue ?? ''}
-                                            onChange={(e) => handleParamsChange(key,e.target.value)}
+                                            onChange={(e) => adEditUiStore.changeParam(key, e.target.value)}
                                         />
                                     </div>
                                 );
@@ -480,14 +345,14 @@ function AdEdit(){
                             return Object.entries(electronicsLabels).map(([key, label]) => {
                                 const params = currentParams as ElectronicsItemParams;
                                 const currentValue = params[key as keyof ElectronicsItemParams];
-                                const isParamEmty = isEmtyValue(currentValue);
+                                const isParamEmty = isEmptyValue(currentValue);
                                 return (
                                     <div key={key} className="edit-param-field">
                                         <label className='edit-param-label'>{label}</label>
                                         <Input 
                                             className={`${isParamEmty ? 'input-empty': ''}`}
                                             value={currentValue ?? ''}
-                                            onChange={(e) => handleParamsChange(key,e.target.value)} 
+                                            onChange={(e) => adEditUiStore.changeParam(key, e.target.value)}
                                         />
                                     </div>
                                 );
@@ -500,44 +365,45 @@ function AdEdit(){
                     <label htmlFor="">Описание</label>
                     <Input.TextArea
                         className={`${formParams.description ? '': 'input-empty' }`}
-                        onChange={(e) => fieldChange('description', e.target.value)}
+                        onChange={(e) => adEditUiStore.changeField('description', e.target.value)}
                         value={formParams?.description}
                         maxLength={1000}
                         showCount
                         autoSize={{ minRows: 4, maxRows: 8 }}
                     />
                     <Popover
-                        open={isDescPopoverOpen}
+                        open={adEditUiStore.isDescPopoverOpen}
                         trigger={'click'}
-                        onOpenChange={(open) => { if (!open) setIsDescPopoverOpen(false); }}
+                        onOpenChange={(open) => adEditUiStore.setDescPopoverOpen(open)}
                         placement="top"
                         align={{offset:[80, -10] }}
                         content={
                             <div style={{ maxWidth: '21rem'}}>
-                                {aiDescStatus === 'error' && (
+                                {adEditUiStore.aiDescStatus === 'error' && (
                                     <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
                                         <h4 style={{fontWeight:500, color:'rgba(192, 15, 12, 1)'}}>Произошла ошибка при запросе к AI</h4>
                                         <p style={{ color: 'rgba(30, 30, 30, 1)' }}>
                                             Попробуйте повторить запрос или закройте уведомление
                                         </p>
-                                        <button type="button" onClick={() => setIsDescPopoverOpen(false)} style={{backgroundColor:'rgba(252, 179, 173, 1)', color:'rgba(0, 0, 0, 0.85)', fontWeight:400, paddingInline:'0.5rem',borderRadius:'0.25rem', width:'fit-content'}}>
+                                        <button type="button" onClick={() => adEditUiStore.setDescPopoverOpen(false)} style={{backgroundColor:'rgba(252, 179, 173, 1)', color:'rgba(0, 0, 0, 0.85)', fontWeight:400, paddingInline:'0.5rem',borderRadius:'0.25rem', width:'fit-content'}}>
                                             Закрыть
                                         </button>
                                     </div>
                                 )}
+                                
 
-                                {aiDescStatus === 'succes' && (
+                                {adEditUiStore.aiDescStatus === 'success' && (
                                     <div>
                                             <h4>Ответ AI</h4>
-                                            <p style={{ whiteSpace: 'pre-line', margin: '10px 0' }}>{aidescription}</p>
+                                            <p style={{ whiteSpace: 'pre-line', margin: '10px 0' }}>{adEditUiStore.aidescription}</p>
                                             <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                                                 <button
                                                     type="button"
                                                     className="submitForm"
                                                     style={{ padding: '4px 12px', height: 'auto' }}
                                                     onClick={() => {
-                                                        fieldChange('description', String(aidescription));
-                                                        setIsDescPopoverOpen(false);
+                                                        adEditUiStore.changeField('description', String(adEditUiStore.aidescription));
+                                                        adEditUiStore.setDescPopoverOpen(false);
                                                     }}
                                                 >
                                                     Применить
@@ -546,7 +412,7 @@ function AdEdit(){
                                                     type="button"
                                                     className="cancelFormChanges"
                                                     style={{ padding: '4px 12px', height: 'auto' }}
-                                                    onClick={() => setIsDescPopoverOpen(false)}
+                                                    onClick={() => adEditUiStore.setDescPopoverOpen(false)}
                                                 >
                                                     Закрыть
                                                 </button>
@@ -558,13 +424,13 @@ function AdEdit(){
                     >
                         <button 
                             className='ai-btn improve-desc'
-                            onClick={handleGetAiDescription}
+                            onClick={adEditUiStore.getAiDescription}
                             type='button'
-                            disabled={aiDescLoading || !formParams.title.trim()}
+                            disabled={adEditUiStore.aiDescLoading || !formParams.title.trim()}
                         >
-                            {aiDescLoading 
+                            {adEditUiStore.aiDescLoading 
                                 ? 'Выполняется запрос' 
-                                : isAiDescRequested
+                                : adEditUiStore.isAiDescRequested
                                     ? 'Повторить запрос'
                                     : formParams.description 
                                         ? 'Улучшить описание'
@@ -578,7 +444,7 @@ function AdEdit(){
                     <button 
                         type='submit' 
                         className='submitForm' 
-                        disabled={isFormInvalid}
+                        disabled={adEditUiStore.isFormInvalid}
                         
                     >
                         Сохранить
@@ -597,6 +463,7 @@ function AdEdit(){
             </form>
         </div>
     )
-}
+})
+
 
 export default AdEdit;

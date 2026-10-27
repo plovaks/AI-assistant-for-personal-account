@@ -1,8 +1,8 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { observer } from "mobx-react-lite";
 import { adDetailsStore } from "../../stores/adDetails.store";
-import type { AutoItemParams, RealEstateItemParams, ElectronicsItemParams, AdFeatures } from "../../types";
+import type { AutoItemParams, RealEstateItemParams, ElectronicsItemParams } from "../../types";
 import img from "../../assets/placeholder-image.png"
 import { Alert, Result, Button } from "antd";
 import './Ad.css'
@@ -70,10 +70,9 @@ const Ad = observer(() => {
     }
 
     const ad = adDetailsStore.ad;
-    const creationDate = ad ? dateFormatter.format(new Date(ad.createdAt)) : '';
-    const updateDate = ad ? dateFormatter.format(new Date(ad.updatedAt)) : '';
+    const creationDate = ad && ad.createdAt ? dateFormatter.format(new Date(ad.createdAt)) : '';
+    const updateDate = ad && ad.updatedAt ? dateFormatter.format(new Date(ad.updatedAt)) : '';
 
-    
 
     // ф-я отображения характеристик в зависимости от категории
     const renderCharacteristics = () => {

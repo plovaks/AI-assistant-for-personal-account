@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import type { AdFeatures } from "../types";
+import type { AdFeatures,ItemUpdateIn } from "../types";
 
 class AdDetailsStore {
     ad:AdFeatures | null = null;
@@ -37,6 +37,28 @@ class AdDetailsStore {
                 this.loading = false;
             })
         }
+    }
+
+    updatedAd = async (id:string, body: ItemUpdateIn & {needsRevision:boolean}) => {
+        const res = await fetch(`/items/${id}`, {
+            method:'PUT',
+            headers:{
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        })
+
+        if(!res.ok){
+            throw new Error('возникла ошибка отправления параметров формы на url');
+        }
+
+        const updatedData:AdFeatures = await res.json();
+
+        runInAction(() => {
+                this.ad = updatedData
+        })
+
+        return res.status  
     }
 
     clear(){
