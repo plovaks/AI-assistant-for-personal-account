@@ -18,26 +18,16 @@ function AdItem ({category, name, price, needsRevision, isLoading} : AdItemProps
             {isLoading ? 
                 (
                     <div className='item-container'>
-                        <div>
-                            <p style={{paddingInline:'0.75rem'}}>
-                                <Skeleton width={80} height={16} />
-                            </p>
+                        <div className='item-img-container item-img-container--skeleton'>
+                            <Skeleton containerClassName='skeleton-fill' />
                         </div>
-                    
                         <div className='item-body-container'>
-                            <p className='item-name'>
-                                <Skeleton width="90%" height={20} />
-                            </p>
-                            
-                            <p className='item-price'>
-                                <Skeleton width={60} height={18} />
-                            </p>
-                            <div >
-                                <Skeleton width={130} height={20} borderRadius={4} />
-                            </div>
+                            <p className='item-name'><Skeleton width="90%" height={20} /></p>
+                            <p className='item-price'><Skeleton width={60} height={18} /></p>
+                            <Skeleton width={130} height={20} borderRadius={4} />
                         </div>
                     </div>
-                )
+                ) 
                 : 
                 (
                     <div className='item-container'>

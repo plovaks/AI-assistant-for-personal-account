@@ -1,6 +1,5 @@
 import { makeAutoObservable } from "mobx";
 import type { Sort, View } from "../types";
-import type { ChangeEvent } from "react";
 
 class AdsUiStore {
     displayType: View = 'grid';
@@ -9,14 +8,14 @@ class AdsUiStore {
     needsRevision:boolean = false;
     currentPage: number = 1;
     sort:Sort = {column:'', direction:''};
-    itemsPerPage: number = 10;
 
     constructor(){
         makeAutoObservable(this)
     }
 
-    setDisplayType(displayType:View){
+    setDisplayType(displayType: View) {
         this.displayType = displayType;
+        this.currentPage = 1;
     }
 
     setSearchQuery(query:string){
@@ -66,6 +65,10 @@ class AdsUiStore {
 
     get isFiltersEmpty(){
         return this.categoryFilters.length > 0 || this.needsRevision;
+    }
+
+    get itemsPerPage() {
+        return this.displayType === 'grid' ? 10 : 5;
     }
 
 }
